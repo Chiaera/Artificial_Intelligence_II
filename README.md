@@ -67,7 +67,7 @@ During locomotion, the robots must continuously maintain mechanically stable con
 
 ## Deliverables:
 
-###Q1
+### Q1
 • a PDDL domain file;
 • at least two PDDL problem files;
 • valid plans for problem instances;
@@ -145,7 +145,7 @@ represented as distinct stages of a maintenance workflow
 • provide problem instances where delaying repair changes the feasibility of the mission;
 • explain how continuous degradation affects inspection and repair ordering.
 
-##Discussion
+## Discussion
 • how causal dependencies structure maintenance planning;
 • how symbolic diagnosis differs from physical diagnosis;
 • how PDDL+ changes the interpretation of deferred repair;
