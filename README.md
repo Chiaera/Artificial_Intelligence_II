@@ -122,7 +122,7 @@ represented as distinct stages of a maintenance workflow
 ## Modelling Guidelines
 • Clearly separate inspection, diagnosis, repair, and verification.
 • Avoid modelling repair as a single unconditional action.
-• Represent component states explicitly, such as unknown, nominal, degraded, repaired, verified, or failed.
+• Represent component states explicitly, such as controlled, nominal, degraded, repaired, verified, or failed.
 • Ensure that verification is required before the goal can be satisfied.
 • Include at least one maintenance task where the robot must choose between inspecting more components and repairing an already diagnosed component.
 
