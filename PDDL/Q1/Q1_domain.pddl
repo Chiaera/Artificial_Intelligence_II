@@ -1,19 +1,19 @@
 (define (domain Q1)
   (:requirements :strips :typing :negative-preconditions)
-  (:types robot location slot component state equipment damage - object
+  (:types robot location slot component status equipment damage - object
       ;;physical object
       tool sensor part - equipment
       antenna-bracket radiator - component
-      torque-wrench grasping-tool coolant-bypass - tool 
+      torque-wrench grasping-tool coolant-bypass additive-extruder - tool 
       visual-camera profilometer - sensor
-      spare-bracket unload coolant-reservoir additive-extruder - part
+      spare-bracket unload coolant-reservoir print-material - part
       storage - location)
   (:constants   ;;state global concepts
-      unknown inspected nominal degraded repaired verified - state
+      unknown inspected nominal degraded repaired verified - status 
       is-loose cracked-bracket coolant-leak structural-deformation - damage)
   (:predicates  
     ;; Component state
-    (state ?c - component ?s - state)
+    (state ?c - component ?s - status)
 
     ;; Robot state
     (robot-at ?r - robot ?loc - location)           ;;robot position
@@ -215,22 +215,23 @@
           (state ?c repaired)))
 
   ;; structural-deformation RADIATOR
-  ;; repaired with an addiction of extrusion materials
+  ;; repaired with an addiction of print-material thru extrusion materials
   (:action structural-deformation-reparation
-      :parameters (?r - robot ?loc - location ?c - radiator ?p - additive-extruder)
-      :precondition (and
-          (state ?c degraded)
-          (component-damaged ?c structural-deformation)
-          (robot-at ?r ?loc)
-          (component-at ?c ?loc)
-          (has-equipment ?r ?p)
-          (is-new ?p))
-      :effect (and
-          (not (component-damaged ?c structural-deformation))
-          (not (is-new ?p))
-          (is-broken ?p)
-          (not (state ?c degraded))  
-          (state ?c repaired)))
+    :parameters (?r - robot ?loc - location ?c - radiator ?t - additive-extruder ?m - print-material ?sl - slot)
+    :precondition (and
+        (state ?c degraded)
+        (component-damaged ?c structural-deformation)
+        (damage-tool-compatible structural-deformation ?t)
+        (robot-at ?r ?loc)
+        (component-at ?c ?loc)
+        (has-equipment ?r ?t)
+        (in-slot ?r ?m ?sl)
+        (is-new ?m))
+    :effect (and
+        (not (component-damaged ?c structural-deformation))
+        (not (is-new ?m))
+        (not (state ?c degraded))
+        (state ?c repaired)))
   ;;---------------------------------------------------------------
 
   ;; VERIFIED

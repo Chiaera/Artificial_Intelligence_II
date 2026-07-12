@@ -1,3 +1,9 @@
+;; Problem2: non-trivial instance with multiple components and limited resources.
+;;      Damaged parts are the cracked-bracket antenna and the coolant-leak radiator.
+;;      The cracked antenna is repaired with a substituion(spare-bracket1) of the part helped by grasping tool. It generated a trash part(antenna1-debris).
+;;      The coolant-leak requires the coolant-bypass tool(cbypass1) and a consumable resource (creserver1) that will be 'emptied'.
+;;      Therefore, the robot can use only 3-slots.
+
 (define (problem Q1-Testingproblem)
   (:domain Q1)
 
@@ -7,24 +13,18 @@
     esp-storage - storage
     slot1 slot2 slot3 - slot
 
-    ;; --- ANTENNA
+    ;; ANTENNA cracked-bracket
     antenna1 - antenna-bracket
-        ;; is-loose:
     cam1 - visual-camera
-    twrench1 - torque-wrench   
-        ;; cracked-bracket:
     grasper1 - grasping-tool
     spare-bracket1 - spare-bracket
     antenna1-debris - unload
 
-    ;; --- RADIATOR
+    ;; RADIATOR coolant-leak
     radiator1 - radiator
     profilometer1 - profilometer
-        ;; coolant-leak:
     cbypass1 - coolant-bypass
     creserver1 - coolant-reservoir
-        ;; structural-deformation:
-    aextruder1 - additive-extruder
   )
   
   (:init
@@ -48,14 +48,12 @@
     (component-at antenna1 antenna-site)
     (state antenna1 unknown)
     (become-unload antenna1 antenna1-debris)
-    ;;(healthy antenna1)  ;;nominal antenna
-    (component-damaged antenna1 cracked-bracket)  ;;damaged antenna
+    (component-damaged antenna1 cracked-bracket)  
     
     ;;RADIATOR
     (component-at radiator1 radiator-site)
     (state radiator1 unknown)
-    ;;(healthy radiator1)  ;;nominal antenna
-    (component-damaged radiator1 structural-deformation)  ;;damaged antenna
+    (component-damaged radiator1 coolant-leak)  
     
 
     ;; Equipment in esp-storage
@@ -64,36 +62,26 @@
     (equipment-at profilometer1 esp-storage)
         ;; tool:
     (equipment-at grasper1 esp-storage)
-    (equipment-at twrench1 esp-storage)
     (equipment-at cbypass1 esp-storage)
         ;; part
     (equipment-at spare-bracket1 esp-storage)
     (is-new spare-bracket1)
     (equipment-at creserver1 esp-storage)
     (is-new creserver1)
-    (equipment-at aextruder1 esp-storage)
-    (is-new aextruder1)
 
 
     ;; --- Compatibility
 
     ;; ANTENNA
     (sensor-compatible antenna1 cam1) 
-        ;; is-loose     
-    (damage-sensor-compatible is-loose cam1)
-    (damage-tool-compatible is-loose twrench1)
-        ;; cracked-bracket
     (damage-sensor-compatible cracked-bracket cam1)  
     (damage-tool-compatible cracked-bracket grasper1) 
 
     ;; RADIATOR 
     (sensor-compatible radiator1 profilometer1)     
-        ;; coolant-leak
     (damage-sensor-compatible coolant-leak profilometer1)
     (damage-tool-compatible coolant-leak cbypass1)
-        ;; structural-deformation
-    (damage-sensor-compatible structural-deformation profilometer1)
   )
   
-  (:goal (state radiator1 verified))    
+  (:goal (and (state antenna1 verified) (state radiator1 verified)))    
 )
