@@ -4,13 +4,13 @@
       ;;physical object
       tool sensor part - equipment
       antenna-bracket radiator - component
-      torque-wrench grasping-tool - tool 
+      torque-wrench grasping-tool coolant-bypass - tool 
       visual-camera profilometer - sensor
-      spare-bracket unload - part
+      spare-bracket unload coolant-reservoir additive-extruder - part
       storage - location)
   (:constants   ;;state global concepts
       unknown inspected nominal degraded repaired verified - state
-      is-loose cracked-bracket - damage)
+      is-loose cracked-bracket coolant-leak structural-deformation - damage)
   (:predicates  
     ;; Component state
     (state ?c - component ?s - state)
@@ -174,7 +174,7 @@
           (state ?c repaired))) 
 
   ;; cracked ANTENNA
-  ;; repaired with a substitution
+  ;; repaired with a substitution thru grasping-tool
   (:action cracked-bracket-reparation
       :parameters (?r - robot ?loc - location ?c - antenna-bracket ?t - grasping-tool ?sp - spare-bracket ?sl - slot ?u - unload)
       :precondition (and
@@ -193,6 +193,43 @@
           (not (in-slot ?r ?sp ?sl))    
           (in-slot ?r ?u ?sl)      
           (is-broken ?u)
+          (state ?c repaired)))
+
+  ;; coolant-leak RADIATOR
+  ;; repaired with an addiction of coolant thru coolant-bypass-tool
+  (:action coolant-radiator-reparation
+      :parameters (?r - robot ?loc - location ?c - radiator ?t - coolant-bypass ?p - coolant-reservoir ?sl - slot)
+      :precondition (and
+          (state ?c degraded)
+          (component-damaged ?c coolant-leak)
+          (damage-tool-compatible coolant-leak ?t)
+          (robot-at ?r ?loc)
+          (component-at ?c ?loc)
+          (in-slot ?r ?p ?sl)
+          (has-equipment ?r ?t)
+          (is-new ?p))
+      :effect (and
+          (not (component-damaged ?c coolant-leak))
+          (not (is-new ?p))
+          (not (state ?c degraded))  
+          (state ?c repaired)))
+
+  ;; structural-deformation RADIATOR
+  ;; repaired with an addiction of extrusion materials
+  (:action structural-deformation-reparation
+      :parameters (?r - robot ?loc - location ?c - radiator ?p - additive-extruder)
+      :precondition (and
+          (state ?c degraded)
+          (component-damaged ?c structural-deformation)
+          (robot-at ?r ?loc)
+          (component-at ?c ?loc)
+          (has-equipment ?r ?p)
+          (is-new ?p))
+      :effect (and
+          (not (component-damaged ?c structural-deformation))
+          (not (is-new ?p))
+          (is-broken ?p)
+          (not (state ?c degraded))  
           (state ?c repaired)))
   ;;---------------------------------------------------------------
 
