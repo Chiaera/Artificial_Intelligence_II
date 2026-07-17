@@ -11,6 +11,11 @@
     antenna1 - antenna-bracket
     cam1 - visual-camera
     twrench1 - torque-wrench   
+
+    ;; ANTENNA cracked
+    gtool1 - grasping-tool
+    spare1 - spare-bracket
+    unload1 - unload
   )
   
   (:init
@@ -36,15 +41,25 @@
     (equipment-at cam1 esp-storage)
         ;; tool:
     (equipment-at twrench1 esp-storage)
+    (equipment-at gtool1 esp-storage)
+        ;; spare:
+    (equipment-at spare1 esp-storage)
+    (is-new spare1)
 
-    ;; --- Compatibility
-
+    ;; --- Compatibility 
+    ;; ANTENNA
     (sensor-compatible antenna1 cam1) 
+        ;; is loose:
     (damage-sensor-compatible is-loose cam1)
     (damage-tool-compatible is-loose twrench1)
+        ;; cracked:
+    (damage-sensor-compatible cracked-bracket cam1)
+    (damage-tool-compatible cracked-bracket gtool1)
+    (become-unload antenna1 unload1)
 
     ;; --- Degradation
-    (= (phase-error antenna1) 0.08)
+    (= (phase_error antenna1) 0.2)
+    (= (vibration_level antenna-site) 0.005)
   )
   
   (:goal (and (state antenna1 verified)))

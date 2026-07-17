@@ -9,7 +9,7 @@
       spare-bracket unload coolant-reservoir print-material - part
       storage - location)
   (:constants   ;;state global concepts
-      uninspected inspected nominal degraded repaired verified - status     ;; unknown chaged to 'uninspected' wrt Q1 for the new parser
+      uninspected inspected nominal degraded repaired verified failed - status     ;; unknown chaged to 'uninspected' wrt Q1 for the new parser
       is-loose cracked-bracket coolant-leak structural-deformation - damage)
   (:predicates  
     ;; Component state
@@ -46,29 +46,58 @@
   ;;-----------------------------------------------
 
   ;; FUNCTIONS
-  (:functions  ;;autonomy of robot
-    (phase-error ?c - antenna-bracket)  ;;mechanics stess/thermal variation --> deformation --> phase error
+  (:functions  
+    (phase_error ?a - antenna-bracket)      ;;cumulative phase error 
+    (vibration_level ?loc - location)     ;;vibration level
   )
 
   ;;--------------------------------------------------------
 
   ;; PROCESS
-  ;; continuous ANTENNA degradation phase-error --> loose --> broken
-  (:process antenna-degradation
-      :parameters (?c - antenna-bracket)
-      :precondition (< (phase-error ?c) 0.25)
-      :effect (increase (phase-error ?c) (* #t 0.005)))
+  ;; continuous ANTENNA degradation phase-error(thermic variation/mechanic stress) --> loose --> cracked --> failed
+  (:process degrade_antenna_phase
+      :parameters (?a - antenna-bracket ?loc - location)
+      :precondition (and 
+          (component-at ?a ?loc)
+          (> (vibration_level ?loc) 0) 
+          (not (state ?a failed)))
+      :effect (and (increase (phase_error ?a) (* #t (vibration_level ?loc))))) ;;linearization of the formula for the structural deformation
   ;;--------------------------------------------------------
 
-  ;; EVENT
+  ;; EVENT 
   ;; phase-error that brings to loose ANTENNA
-  (:event antenna-becomes-loose
-      :parameters (?c - antenna-bracket)
+  (:event antenna_becomes_loose
+      :parameters (?a - antenna-bracket)
       :precondition (and 
-          (>= (phase-error ?c) 0.1) 
-          (not (component-damaged ?c is-loose)) 
-          (not (component-damaged ?c cracked-bracket)))
-      :effect (component-damaged ?c is-loose))  
+          ;; (state ?a nominal) NO because it tell directly to parser that component is degraded (without inspection)
+          (>= (phase_error ?a) 0.1) ;;Loose threshold
+          (not (component-damaged ?a is-loose))
+          (not (component-damaged ?a cracked-bracket))
+          (not (state ?a failed)))
+      :effect (and 
+          (component-damaged ?a is-loose)
+          (not (healthy ?a))))
+
+  ;; loose antenna can bring to cracked
+  (:event antenna-becomes-cracked
+      :parameters (?a - antenna-bracket)
+      :precondition (and 
+          (component-damaged ?a is-loose)
+          (>= (phase_error ?a) 0.2)) ;;Cracked threshold
+    :effect (and 
+        (not (component-damaged ?a is-loose))
+        (component-damaged ?a cracked-bracket)))
+
+  ;; cracked antenna can bring to failed state
+  (:event antenna_failed
+      :parameters (?a - antenna-bracket)
+      :precondition (and 
+          (component-damaged ?a cracked-bracket)
+          (>= (phase_error ?a) 0.3))
+      :effect (and 
+          (state ?a failed)
+          (not (component-damaged ?a cracked-bracket))))
+
   ;;--------------------------------------------------------
 
   ;; EQUIPMENT (tool/sensor/part) MOVEMENT
@@ -132,7 +161,8 @@
           (connected ?from ?to))
       :effect (and 
           (not (robot-at ?r ?from))
-          (robot-at ?r ?to)))
+          (robot-at ?r ?to)
+          (increase (vibration_level ?to) 0.05))) ;;movements in space increase mechanics vibration
   ;;---------------------------------------------
 
   ;; INSPECTION
@@ -168,8 +198,9 @@
           (state ?c degraded)))
 
   ;; if the component is not degraded, active 'nominal' state
-  (:action nominal-diagnosis
-      :parameters (?c - component ?s - sensor)
+
+  (:action nominal-diagnosis-radiator
+      :parameters (?c - radiator ?s - sensor)
       :precondition (and
           (state ?c inspected)
           (data-stored ?c ?s)            
@@ -178,6 +209,18 @@
           (not (state ?c inspected))
           (not (data-stored ?c ?s))      
           (state ?c nominal)))
+        
+  ;; considering the phase error for antenna
+  (:action nominal-diagnosis-antenna
+      :parameters (?a - antenna-bracket ?s - sensor)
+      :precondition (and
+          (state ?a inspected)
+          (data-stored ?a ?s)            
+          (< (phase_error ?a) 0.1)) 
+      :effect (and
+          (not (state ?a inspected))
+          (not (data-stored ?a ?s))      
+          (state ?a nominal)))
   ;;-----------------------------------------------------
 
   ;; REPAIR
@@ -198,7 +241,8 @@
           (not (component-damaged ?c is-loose))
           (not (state ?c degraded))
           (state ?c repaired)
-          (assign (phase-error ?c) 0.0)))
+          (assign (phase_error ?c) 0)
+          (assign (vibration_level ?loc) 0)))
 
   ;; cracked ANTENNA
   ;; repaired with a substitution thru grasping-tool
@@ -220,7 +264,9 @@
           (not (in-slot ?r ?sp ?sl))    
           (in-slot ?r ?u ?sl)      
           (is-broken ?u)
-          (state ?c repaired)))
+          (state ?c repaired)
+          (assign (phase_error ?c) 0)
+          (assign (vibration_level ?loc) 0)))
 
   ;; coolant-leak RADIATOR
   ;; repaired with an addiction of coolant thru coolant-bypass-tool

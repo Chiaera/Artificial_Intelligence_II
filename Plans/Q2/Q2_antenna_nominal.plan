@@ -1,0 +1,12 @@
+;;!domain: Q2
+;;!problem: Q2-problem1
+
+0.00000: (move R docking-port esp-storage)
+0.00000: (unstore-equipment R esp-storage cam1)
+0.00000: (move R esp-storage antenna-site)
+0.00000: (inspect-component R antenna1 antenna-site cam1)
+0.00000: (nominal-diagnosis-antenna antenna1 cam1)
+0.00000: (nominal-verify antenna1)
+
+; Makespan: 0
+; Metric: 0
