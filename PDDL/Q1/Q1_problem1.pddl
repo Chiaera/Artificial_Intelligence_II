@@ -7,7 +7,7 @@
 
   (:objects
     R - robot
-    docking-port antenna-site radiator-site - location
+    docking-port antenna-site - location
     esp-storage - storage
     slot1 slot2 slot3 - slot
 
