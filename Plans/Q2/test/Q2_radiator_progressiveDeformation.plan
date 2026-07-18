@@ -1,0 +1,24 @@
+;;!domain: Q2-Extended
+;;!problem: Q2-TestingExtendedProblem
+
+0: (move R docking-port esp-storage)
+0: (unstore-equipment R esp-storage profilometer1)
+0: (move R esp-storage radiator-site)
+0: -----waiting---- [1.0]
+1.0: (inspect-component R radiator1 radiator-site profilometer1)
+1.0: (degraded-diagnosis radiator1 structural-deformation profilometer1)
+1.0: (put-in-slot R profilometer1 slot1)
+1.0: (move R radiator-site esp-storage)
+1.0: (unstore-equipment R esp-storage printmat1)
+1.0: (put-in-slot R printmat1 slot3)
+1.0: (unstore-equipment R esp-storage aextruder1)
+1.0: (move R esp-storage radiator-site)
+1.0: (start-structural-deformation-reparation R radiator-site radiator1 aextruder1 printmat1 slot3)
+1.0: -----waiting---- [5.0]
+5.0: (put-in-slot R aextruder1 slot2)
+5.0: -----waiting---- [6.0]
+6.0: (take-from-slot R slot1 profilometer1)
+6.0: (repaired-verify R radiator1 radiator-site profilometer1)
+
+; Makespan: 6
+; Metric: 6
