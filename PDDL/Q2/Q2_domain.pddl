@@ -114,6 +114,17 @@
           (state ?a failed)
           (not (component-damaged ?a cracked-bracket))))
 
+  ;; paint degradation increasing stress deformation velocity 
+  (:event paint_causes_overheating
+      :parameters (?r - radiator)
+      :precondition (and 
+          (>= (thermal_strain ?r) 5.0)    
+          (not (paint_is_degraded ?r))     
+          (not (state ?r failed)))
+      :effect (and 
+          (paint_is_degraded ?r)           
+          (increase (strain_rate ?r) 0.15))) 
+
   ;; cumulative stres can bring to bowing RADIATOR
   (:event radiator_starts_bowing
       :parameters (?r - radiator)
@@ -208,9 +219,9 @@
           (robot-at ?r ?from)
           (connected ?from ?to))
       :effect (and 
+          (increase (vibration_level ?to) 0.05)     ;;movements in space increase mechanics vibration
           (not (robot-at ?r ?from))
-          (robot-at ?r ?to)
-          (increase (vibration_level ?to) 0.05))) ;;movements in space increase mechanics vibration
+          (robot-at ?r ?to))) 
   ;;---------------------------------------------
 
   ;; INSPECTION

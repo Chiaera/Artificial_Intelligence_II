@@ -1,6 +1,5 @@
-(define (problem Q2-TestingProblem)
+(define (problem Q2-Problem)
   (:domain Q2)
-
   (:objects
     R - robot
     docking-port antenna-site radiator-site - location
@@ -26,7 +25,6 @@
     printmat1 - print-material
     aextruder1 - additive-extruder
   )
-  
   (:init
     ;; Maps connections
     (connected docking-port esp-storage)
@@ -50,16 +48,13 @@
     (state radiator1 uninspected)   
 
     ;; Equipment in esp-storage
-        ;; sensor:
     (equipment-at cam1 esp-storage)
     (equipment-at profilometer1 esp-storage)
-        ;; tool:
     (equipment-at twrench1 esp-storage)
     (equipment-at gtool1 esp-storage)
     (equipment-at tape esp-storage)
     (is-new tape)
     (equipment-at aextruder1 esp-storage)
-        ;; spare:
     (equipment-at spare1 esp-storage)
     (is-new spare1)
     (equipment-at printmat1 esp-storage)
@@ -68,38 +63,34 @@
     ;; --- Compatibility 
     ;; ANTENNA
     (sensor-compatible antenna1 cam1) 
-        ;; is loose:
     (damage-sensor-compatible is-loose cam1)
     (damage-tool-compatible is-loose twrench1)
-        ;; cracked:
     (damage-sensor-compatible cracked-bracket cam1)
     (damage-tool-compatible cracked-bracket gtool1)
     (become-unload antenna1 unload1)
 
     ;; RADIATOR
     (sensor-compatible radiator1 profilometer1)   
-        ;; bowing:
     (damage-sensor-compatible thermal-bowing profilometer1)
     (damage-tool-compatible thermal-bowing tape)
-        ;; structural-deformation
     (damage-sensor-compatible structural-deformation profilometer1)
     (damage-tool-compatible structural-deformation aextruder1)
 
     ;; --- Degradation
-    ;; location vibration
     (= (vibration_level docking-port) 0)
     (= (vibration_level esp-storage) 0)
-    (= (vibration_level antenna-site) 0.01) 
+    (= (vibration_level antenna-site) 0.05) 
     (= (vibration_level radiator-site) 0)
         
-    ;; ANTENNA
-    (= (phase_error antenna1) 0.09)
+    ;; ANTENNA almost loose
+    (= (phase_error antenna1) 0.09) 
         
-    ;; RADIATOR
-    (= (thermal_strain radiator1) 30)
-    (= (strain_rate radiator1) 0.05)
+    ;; RADIATOR already bowed, almost deformated
+    (= (thermal_strain radiator1) 15.0) 
+    (= (strain_rate radiator1) 2.0)
   )
   
   (:goal (and 
+      (state antenna1 verified)
       (state radiator1 verified)))
 )
