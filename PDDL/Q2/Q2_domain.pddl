@@ -4,16 +4,17 @@
       ;;physical object
       tool sensor part - equipment
       antenna-bracket radiator - component
-      torque-wrench grasping-tool coolant-bypass additive-extruder - tool 
+      torque-wrench grasping-tool additive-extruder thermal-tape - tool 
       visual-camera profilometer - sensor
-      spare-bracket unload coolant-reservoir print-material - part
+      spare-bracket unload print-material - part
       storage - location)
   (:constants   ;;state global concepts
       uninspected inspected nominal degraded repaired verified failed - status     ;; unknown chaged to 'uninspected' wrt Q1 for the new parser
-      is-loose cracked-bracket coolant-leak structural-deformation - damage)
+      is-loose cracked-bracket thermal-bowing structural-deformation - damage)
   (:predicates  
     ;; Component state
     (state ?c - component ?s - status)
+    (paint_is_degraded ?r - radiator)
 
     ;; Robot state
     (robot-at ?r - robot ?loc - location)           ;;robot position
@@ -46,9 +47,15 @@
   ;;-----------------------------------------------
 
   ;; FUNCTIONS
+  ;; to determine the levels for the diagnosis of the component
   (:functions  
-    (phase_error ?a - antenna-bracket)      ;;cumulative phase error 
-    (vibration_level ?loc - location)     ;;vibration level
+    ;; ANTENNA for thermic variation and thermical variations
+    (phase_error ?a - antenna-bracket)    ;;cumulative phase error 
+    (vibration_level ?loc - location)     ;;mechanics stress
+
+    ;; RADIATOR structural-deformation from thermical variations
+    (thermal_strain ?r - radiator)  ;;cumulative structural stress 
+    (strain_rate ?r - radiator)        ;;semplification: constant stress increased velocity
   )
 
   ;;--------------------------------------------------------
@@ -60,8 +67,17 @@
       :precondition (and 
           (component-at ?a ?loc)
           (> (vibration_level ?loc) 0) 
-          (not (state ?a failed)))
+          (not (state ?a failed))
+          (< (phase_error ?a) 1)) ;; limit for paser
       :effect (and (increase (phase_error ?a) (* #t (vibration_level ?loc))))) ;;linearization of the formula for the structural deformation
+
+  ;; continuous RADIATOR degradation for thermal variations and paint degradation
+  (:process increased_thermal_strain
+      :parameters (?r - radiator)
+      :precondition (and 
+          (not (state ?r failed))
+          (< (thermal_strain ?r) 40.0)) ;;parser limitation
+      :effect (increase (thermal_strain ?r) (* #t (strain_rate ?r))))
   ;;--------------------------------------------------------
 
   ;; EVENT 
@@ -78,7 +94,7 @@
           (component-damaged ?a is-loose)
           (not (healthy ?a))))
 
-  ;; loose antenna can bring to cracked
+  ;; loose ANTENNA can bring to cracked
   (:event antenna-becomes-cracked
       :parameters (?a - antenna-bracket)
       :precondition (and 
@@ -88,7 +104,7 @@
         (not (component-damaged ?a is-loose))
         (component-damaged ?a cracked-bracket)))
 
-  ;; cracked antenna can bring to failed state
+  ;; cracked ANTENNA can bring to failed state
   (:event antenna_failed
       :parameters (?a - antenna-bracket)
       :precondition (and 
@@ -97,6 +113,38 @@
       :effect (and 
           (state ?a failed)
           (not (component-damaged ?a cracked-bracket))))
+
+  ;; cumulative stres can bring to bowing RADIATOR
+  (:event radiator_starts_bowing
+      :parameters (?r - radiator)
+      :precondition (and 
+          (>= (thermal_strain ?r) 10.0)     
+          (not (component-damaged ?r thermal-bowing))
+          (not (component-damaged ?r structural-deformation))
+          (not (state ?r failed)))
+      :effect (and 
+          (component-damaged ?r thermal-bowing)
+          (not (healthy ?r))))
+  
+  ;; bowed RADIATOR can bring to a permanent structural deformation
+  (:event radiator_structural_failure
+    :parameters (?r - radiator)
+    :precondition (and 
+          (component-damaged ?r thermal-bowing)
+          (>= (thermal_strain ?r) 20.0))
+    :effect (and 
+        (not (component-damaged ?r thermal-bowing))
+        (component-damaged ?r structural-deformation)))
+
+  ;; RADIATOR structural deformation can bring to failed state
+  (:event radiator_failed
+      :parameters (?r - radiator)
+      :precondition (and 
+          (component-damaged ?r structural-deformation)
+          (>= (thermal_strain ?r) 30))
+      :effect (and 
+          (state ?r failed)
+          (not (component-damaged ?r structural-deformation))))
 
   ;;--------------------------------------------------------
 
@@ -198,24 +246,24 @@
           (state ?c degraded)))
 
   ;; if the component is not degraded, active 'nominal' state
-
   (:action nominal-diagnosis-radiator
       :parameters (?c - radiator ?s - sensor)
       :precondition (and
           (state ?c inspected)
-          (data-stored ?c ?s)            
-          (healthy ?c))
+          (data-stored ?c ?s)   
+          (healthy ?c)
+          (< (thermal_strain ?c) 10.0))
       :effect (and
           (not (state ?c inspected))
           (not (data-stored ?c ?s))      
           (state ?c nominal)))
         
-  ;; considering the phase error for antenna
   (:action nominal-diagnosis-antenna
       :parameters (?a - antenna-bracket ?s - sensor)
       :precondition (and
           (state ?a inspected)
-          (data-stored ?a ?s)            
+          (data-stored ?a ?s)    
+          (healthy ?a)
           (< (phase_error ?a) 0.1)) 
       :effect (and
           (not (state ?a inspected))
@@ -268,24 +316,28 @@
           (assign (phase_error ?c) 0)
           (assign (vibration_level ?loc) 0)))
 
-  ;; coolant-leak RADIATOR
-  ;; repaired with an addiction of coolant thru coolant-bypass-tool
-  (:action coolant-radiator-reparation
-      :parameters (?r - robot ?loc - location ?c - radiator ?t - coolant-bypass ?p - coolant-reservoir ?sl - slot)
+  ;; bowing RADIATOR
+  ;; repaired by applying thermal tape
+  (:action bowing-radiator-reparation
+      :parameters (?r - robot ?loc - location ?c - radiator ?t - thermal-tape)
       :precondition (and
           (state ?c degraded)
-          (component-damaged ?c coolant-leak)
-          (damage-tool-compatible coolant-leak ?t)
+          (component-damaged ?c thermal-bowing)
+          (damage-tool-compatible thermal-bowing ?t)
           (robot-at ?r ?loc)
           (component-at ?c ?loc)
-          (in-slot ?r ?p ?sl)
           (has-equipment ?r ?t)
-          (is-new ?p))
+          (is-new ?t)) 
       :effect (and
-          (not (component-damaged ?c coolant-leak))
-          (not (is-new ?p))
+          (not (component-damaged ?c thermal-bowing))
+          (not (is-new ?t))
+          (not (has-equipment ?r ?t))
+          (handempty ?r) 
           (not (state ?c degraded))  
-          (state ?c repaired)))
+          (state ?c repaired)
+          (assign (thermal_strain ?c) 0)
+          (assign (strain_rate ?c) 0.05) 
+          (not (paint_is_degraded ?c))))
 
   ;; structural-deformation RADIATOR
   ;; repaired with an addiction of print-material thru extrusion materials
@@ -304,7 +356,10 @@
         (not (component-damaged ?c structural-deformation))
         (not (is-new ?m))
         (not (state ?c degraded))
-        (state ?c repaired)))
+        (state ?c repaired)
+        (assign (thermal_strain ?c) 0)
+          (assign (strain_rate ?c) 0.05)
+        (not (paint_is_degraded ?c))))
   ;;---------------------------------------------------------------
 
   ;; VERIFIED

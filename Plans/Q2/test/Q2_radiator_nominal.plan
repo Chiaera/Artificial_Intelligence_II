@@ -1,0 +1,12 @@
+;;!domain: Q2
+;;!problem: Q2-TestingProblem
+
+0.00000: (move R docking-port esp-storage)
+0.00000: (unstore-equipment R esp-storage profilometer1)
+0.00000: (move R esp-storage radiator-site)
+0.00000: (inspect-component R radiator1 radiator-site profilometer1)
+0.00000: (nominal-diagnosis-radiator radiator1 profilometer1)
+0.00000: (nominal-verify radiator1)
+
+; Makespan: 0
+; Metric: 0

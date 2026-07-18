@@ -1,0 +1,14 @@
+;;!domain: Q2
+;;!problem: Q2-TestingProblem
+
+1.00000: (put-in-slot R profilometer1 slot1)
+1.00000: (unstore-equipment R esp-storage aextruder1)
+1.00000: (move R esp-storage radiator-site)
+1.00000: (degraded-diagnosis radiator1 structural-deformation profilometer1)
+1.00000: (structural-deformation-reparation R radiator-site radiator1 aextruder1 printmat1 slot3)
+1.00000: (put-in-slot R aextruder1 slot2)
+1.00000: (take-from-slot R slot1 profilometer1)
+1.00000: (repaired-verify R radiator1 radiator-site profilometer1)
+
+; Makespan: 1
+; Metric: 1
