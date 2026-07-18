@@ -1,22 +1,29 @@
 ;;!domain: Q2
 ;;!problem: Q2-Problem
 
-1.00000: (degraded-diagnosis antenna1 is-loose cam1)
-1.00000: (take-from-slot R slot2 twrench1)
-1.00000: (loose-antenna-reparation R antenna-site antenna1 twrench1)
-1.00000: (put-in-slot R twrench1 slot2)
-1.00000: (take-from-slot R slot1 cam1)
-1.00000: (repaired-verify R antenna1 antenna-site cam1)
-1.00000: (put-in-slot R cam1 slot1)
-1.00000: (move R antenna-site radiator-site)
-1.00000: (take-from-slot R slot3 profilometer1)
-1.00000: (inspect-component R radiator1 radiator-site profilometer1)
-1.00000: (put-in-slot R profilometer1 slot3)
-1.00000: (take-from-slot R slot4 tape)
-1.00000: (degraded-diagnosis radiator1 thermal-bowing profilometer1)
-1.00000: (bowing-radiator-reparation R radiator-site radiator1 tape)
-1.00000: (take-from-slot R slot3 profilometer1)
-1.00000: (repaired-verify R radiator1 radiator-site profilometer1)
+0: -----waiting---- [1.0]
+1.0: (move R docking-port esp-storage)
+1.0: (move R esp-storage antenna-site)
+1.0: (take-from-slot R slot1 cam1)
+1.0: (inspect-component R antenna1 antenna-site cam1)
+1.0: (put-in-slot R cam1 slot1)
+1.0: (degraded-diagnosis antenna1 is-loose cam1)
+1.0: (take-from-slot R slot2 twrench1)
+1.0: (loose-antenna-reparation R antenna-site antenna1 twrench1)
+1.0: (put-in-slot R twrench1 slot2)
+1.0: -----waiting---- [38.0]
+38.0: (take-from-slot R slot1 cam1)
+38.0: (repaired-verify R antenna1 antenna-site cam1)
+38.0: (put-in-slot R cam1 slot1)
+38.0: (move R antenna-site radiator-site)
+38.0: (take-from-slot R slot3 profilometer1)
+38.0: (inspect-component R radiator1 radiator-site profilometer1)
+38.0: (degraded-diagnosis radiator1 thermal-bowing profilometer1)
+38.0: (put-in-slot R profilometer1 slot3)
+38.0: (take-from-slot R slot4 tape)
+38.0: (bowing-radiator-reparation R radiator-site radiator1 tape)
+38.0: (take-from-slot R slot3 profilometer1)
+38.0: (repaired-verify R radiator1 radiator-site profilometer1)
 
 ; Makespan: 1
 ; Metric: 1
