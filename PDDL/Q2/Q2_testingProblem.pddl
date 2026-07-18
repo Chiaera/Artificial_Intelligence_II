@@ -96,7 +96,7 @@
     (= (phase_error antenna1) 0.09)
         
     ;; RADIATOR
-    (= (thermal_strain radiator1) 30)
+    (= (thermal_strain radiator1) 10)
     (= (strain_rate radiator1) 0.05)
   )
   
