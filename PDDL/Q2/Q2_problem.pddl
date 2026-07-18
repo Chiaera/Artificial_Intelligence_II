@@ -4,7 +4,7 @@
     R - robot
     docking-port antenna-site radiator-site - location
     esp-storage - storage
-    slot1 slot2 slot3 slot4 - slot
+    slot1 slot2 slot3 slot4 slot5 - slot
 
     ;; --- ANTENNA
     antenna1 - antenna-bracket
@@ -22,32 +22,32 @@
     aextruder1 - additive-extruder
   )
   (:init
-    ;; Maps connections: direct route to speed up the planner
-    ;; storage --> antenna-site --> radiator-site
+    ;; Maps connections
     (connected docking-port esp-storage)
     (connected esp-storage antenna-site)
     (connected antenna-site radiator-site)
     
-    ;; Solver semplification: robot starts with full slots
+    ;; Solver simplification: 5 Slots with the needed parts
     (robot-at R docking-port)
     (handempty R)
     (in-slot R cam1 slot1)
     (in-slot R twrench1 slot2)
     (in-slot R profilometer1 slot3)
-    (in-slot R tape slot4)
-    (is-new tape)
+    (in-slot R printmat1 slot4)
+    (in-slot R aextruder1 slot5)
+    (is-new printmat1)
+    (state antenna1 uninspected) 
+    (state radiator1 uninspected) 
     
-    ;; other part in the magazine
+    ;; Other parts left in the magazine
+    (equipment-at tape esp-storage)
+    (is-new tape)
     (equipment-at gtool1 esp-storage)
-    (equipment-at aextruder1 esp-storage)
     (equipment-at spare1 esp-storage)
     (is-new spare1)
-    (equipment-at printmat1 esp-storage)
-    (is-new printmat1)
+
     (component-at antenna1 antenna-site)
     (component-at radiator1 radiator-site)
-    (state antenna1 uninspected)   
-    (state radiator1 uninspected)   
 
     ;; --- Compatibility 
     (sensor-compatible antenna1 cam1) 
@@ -67,12 +67,17 @@
     (= (vibration_level antenna-site) 0.05) 
     (= (vibration_level radiator-site) 0)
         
-    ;; ANTENNA almost loose
-    (= (phase_error antenna1) 0.09)
+    ;; ANTENNA already loose
+    (= (phase_error antenna1) 0.15) 
+    (component-damaged antenna1 is-loose) 
         
-    ;; RADIATOR already bowed
-    (= (thermal_strain radiator1) 9.8) 
-    (= (strain_rate radiator1) 0.1)
+    ;; RADIATOR already structural-deformation
+    (= (thermal_strain radiator1) 25.0) 
+    (component-damaged radiator1 structural-deformation)
+    (= (strain_rate radiator1) 0.25)
+    (paint_is_degraded radiator1)
+    (= (layers_printed radiator1) 0)
+    (= (layers_to_print radiator1) 5.0)
   )
   
   (:goal (and 

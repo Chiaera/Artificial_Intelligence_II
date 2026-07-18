@@ -1,5 +1,5 @@
 (define (problem Q2-TestingExtendedProblem)
-  (:domain Q2-Extended)
+  (:domain Q2)
 
   (:objects
     R - robot

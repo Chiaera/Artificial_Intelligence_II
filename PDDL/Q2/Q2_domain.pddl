@@ -42,13 +42,14 @@
     (is-new ?sp - part)    ;;spare part to insert
     (is-broken ?sp - part) ;;component substituted
     (become-unload ?c - component ?u - unload)  ;;the substituted componend become unload
+    (printing-in-progress ?r - robot ?c - radiator)    ;;radiator structural deformation in progress
   )
 
   ;;-----------------------------------------------
 
   ;; FUNCTIONS
-  ;; to determine the levels for the diagnosis of the component
   (:functions  
+  ;; to determine the levels for the diagnosis of the component
     ;; ANTENNA for thermic variation and thermical variations
     (phase_error ?a - antenna-bracket)    ;;cumulative phase error 
     (vibration_level ?loc - location)     ;;mechanics stress
@@ -56,6 +57,10 @@
     ;; RADIATOR structural-deformation from thermical variations
     (thermal_strain ?r - radiator)  ;;cumulative structural stress 
     (strain_rate ?r - radiator)        ;;semplification: constant stress increased velocity
+
+  ;; to repair the RADIATOR structure deformation
+    (layers_to_print ?r - radiator)
+    (layers_printed ?r - radiator)
   )
 
   ;;--------------------------------------------------------
@@ -78,6 +83,33 @@
           (not (state ?r failed))
           (< (thermal_strain ?r) 40.0)) ;;parser limitation
       :effect (increase (thermal_strain ?r) (* #t (strain_rate ?r))))
+
+  ;; RADIATOR repairs structural deformation
+  ;; apply one layer of printed material over time
+  (:process apply-printed-layers
+      :parameters (?r - robot ?c - radiator)
+      :precondition (and
+          (printing-in-progress ?r ?c)
+          (< (layers_printed ?c) (layers_to_print ?c))
+          (not (state ?c failed)))
+      :effect (increase (layers_printed ?c) (* #t 1.0))) 
+
+  ;; complete the reparation
+  (:event structural-repair-complete
+      :parameters (?r - robot ?c - radiator)
+      :precondition (and
+          (printing-in-progress ?r ?c)
+          (>= (layers_printed ?c) (layers_to_print ?c))
+          (component-damaged ?c structural-deformation)
+          (not (state ?c failed))) 
+      :effect (and
+          (not (printing-in-progress ?r ?c))
+          (not (component-damaged ?c structural-deformation))
+          (not (state ?c degraded))
+          (state ?c repaired)
+          (assign (thermal_strain ?c) 0)
+          (assign (strain_rate ?c) 0.05)
+          (not (paint_is_degraded ?c))))
   ;;--------------------------------------------------------
 
   ;; EVENT 
@@ -234,8 +266,7 @@
           (robot-at ?r ?loc)
           (component-at ?c ?loc)
           (has-equipment ?r ?s)
-          (sensor-compatible ?c ?s)
-      )  
+          (sensor-compatible ?c ?s))  
       :effect(and
           (not (state ?c uninspected))
           (state ?c inspected)
@@ -350,27 +381,24 @@
           (assign (strain_rate ?c) 0.05) 
           (not (paint_is_degraded ?c))))
 
-  ;; structural-deformation RADIATOR
+  ;; structural-deformation RADIATOR (over time)
   ;; repaired with an addiction of print-material thru extrusion materials
-  (:action structural-deformation-reparation
-    :parameters (?r - robot ?loc - location ?c - radiator ?t - additive-extruder ?m - print-material ?sl - slot)
-    :precondition (and
-        (state ?c degraded)
-        (component-damaged ?c structural-deformation)
-        (damage-tool-compatible structural-deformation ?t)
-        (robot-at ?r ?loc)
-        (component-at ?c ?loc)
-        (has-equipment ?r ?t)
-        (in-slot ?r ?m ?sl)
-        (is-new ?m))
-    :effect (and
-        (not (component-damaged ?c structural-deformation))
-        (not (is-new ?m))
-        (not (state ?c degraded))
-        (state ?c repaired)
-        (assign (thermal_strain ?c) 0)
-          (assign (strain_rate ?c) 0.05)
-        (not (paint_is_degraded ?c))))
+  (:action start-structural-deformation-reparation
+      :parameters (?r - robot ?loc - location ?c - radiator ?t - additive-extruder ?m - print-material ?sl - slot)
+      :precondition (and
+          (state ?c degraded)
+          (component-damaged ?c structural-deformation)
+          (damage-tool-compatible structural-deformation ?t)
+          (robot-at ?r ?loc)
+          (component-at ?c ?loc)
+          (has-equipment ?r ?t)
+          (in-slot ?r ?m ?sl)
+          (is-new ?m)
+          (not (printing-in-progress ?r ?c)))
+      :effect (and
+          (not (is-new ?m))
+          (printing-in-progress ?r ?c)
+          (assign (layers_printed ?c) 0)))
   ;;---------------------------------------------------------------
 
   ;; VERIFIED
@@ -382,8 +410,7 @@
           (robot-at ?r ?loc)
           (component-at ?c ?loc)
           (has-equipment ?r ?s)
-          (sensor-compatible ?c ?s)
-      )  
+          (sensor-compatible ?c ?s))  
       :effect(and
           (not (state ?c repaired))
           (state ?c verified)))
