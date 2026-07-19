@@ -1,3 +1,7 @@
+;; Domain Q1
+;;      Time is not considered and actions produce instant effects.
+;;      Implemented componed: antenna-bracket (is_loose / cracked-bracket) and radiator (coolant-leak / structural-deformation)
+
 (define (domain Q2)
   (:requirements :strips :typing :negative-preconditions :numeric-fluents :durative-actions :continuous-effects :time)
   (:types robot location slot component status equipment damage - object
@@ -86,7 +90,7 @@
 
   ;; RADIATOR repairs structural deformation
   ;; apply one layer of printed material over time
-  (:process apply-printed-layers
+  (:process apply_printed_layers
       :parameters (?r - robot ?c - radiator)
       :precondition (and
           (printing-in-progress ?r ?c)
@@ -94,22 +98,6 @@
           (not (state ?c failed)))
       :effect (increase (layers_printed ?c) (* #t 1.0))) 
 
-  ;; complete the reparation
-  (:event structural-repair-complete
-      :parameters (?r - robot ?c - radiator)
-      :precondition (and
-          (printing-in-progress ?r ?c)
-          (>= (layers_printed ?c) (layers_to_print ?c))
-          (component-damaged ?c structural-deformation)
-          (not (state ?c failed))) 
-      :effect (and
-          (not (printing-in-progress ?r ?c))
-          (not (component-damaged ?c structural-deformation))
-          (not (state ?c degraded))
-          (state ?c repaired)
-          (assign (thermal_strain ?c) 0)
-          (assign (strain_rate ?c) 0.05)
-          (not (paint_is_degraded ?c))))
   ;;--------------------------------------------------------
 
   ;; EVENT 
@@ -188,6 +176,24 @@
       :effect (and 
           (state ?r failed)
           (not (component-damaged ?r structural-deformation))))
+
+  ;; RADIATOR repaits structural-deformation
+  ;; complete the reparation
+  (:event structural_repair_complete
+      :parameters (?r - robot ?c - radiator)
+      :precondition (and
+          (printing-in-progress ?r ?c)
+          (>= (layers_printed ?c) (layers_to_print ?c))
+          (component-damaged ?c structural-deformation)
+          (not (state ?c failed))) 
+      :effect (and
+          (not (printing-in-progress ?r ?c))
+          (not (component-damaged ?c structural-deformation))
+          (not (state ?c degraded))
+          (state ?c repaired)
+          (assign (thermal_strain ?c) 0)
+          (assign (strain_rate ?c) 0.05)
+          (not (paint_is_degraded ?c))))
 
   ;;--------------------------------------------------------
 
