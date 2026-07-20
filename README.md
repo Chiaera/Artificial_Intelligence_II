@@ -1,152 +1,253 @@
-# DOMINIO
+# Structural Maintenance and Repair Verification in Autonomous Orbital Maintenance Platform
 
-## General
+This repository contains the PDDL and PDDL+ models developed for assignment **D6-V3: Autonomous Orbital Maintenance Platform — Structural Maintenance and Repair Verification**, together with the corresponding problem instances, generated plans, and the accompanying report.
 
-- Model a symbolic planning domain describing one or more
-autonomous free-climbing robots operating on the external structure of an orbital platform.
+## 1. Domain Description
 
-- Locomote by attaching and detaching their limbs from a network of handrails distributed across the spacecraft structure. 
-During locomotion, the robots must continuously maintain mechanically stable contact configurations.
+The domain models a single free-climbing maintenance robot operating on the external structure of an orbital platform. The robot must inspect, diagnose, repair, and verify two external components:
 
-- Environment:
-	* Microgravity
-	* NOT static: 
-		- Components degrade over time, 
-		- batteries discharge, 
-		- temperatures depending on solar exposure, 
-		- communication opportunities intermittent, 
-		- tools may experience wear. 
+- **Antenna bracket** — the structural support fixing the communication antenna to the platform. Two damage types are modelled: loosening (`is-loose`) and structural cracking (`cracked-bracket`). In the basic PDDL model (Q1) these are treated as independent, separately diagnosable conditions, each with its own dedicated repair action. In the PDDL+ model (Q2) they instead become causally connected stages of the same continuous degradation process, escalating toward a `failed` state if left unaddressed.
+- **Radiator** — responsible for thermal control via coolant circulation. Q1 models two independent damage types: a coolant leak (`coolant-leak`) and a structural deformation (`structural-deformation`). Q2 focuses exclusively on the structural deformation path, extending it with an intermediate thermal bowing stage (`thermal-bowing`) to represent a continuous escalation toward failure.
 
-- Operation: 
-	* inspect components, 
-	* replace damaged units, 
-	* install new payloads, 
-	* manipulate valves, 
-	* transport tools, 
-	* perform diagnostic operations.
+Every maintenance task follows the same causal workflow, which is the core modelling requirement of the assignment:
+```
+unknown / uninspected → inspected → nominal / degraded → repaired → verified
+```
 
-- External subsystems:
-	* structural trusses,
-	* handrails,
-	* communication antennas, 
-	* radiators, 
-	* solar arrays, 
-	* batteries, 
-	* scientific payloads, 
-	* inspection panels,
-	* tenance modules, 
-	* storage containers, 
-	* docking ports. 
+Repair is never treated as a single unconditional action: the robot must first inspect the component with a compatible sensor, diagnose the specific damage, apply the tool required for that specific damage, and finally verify the repair before the goal can be considered satisfied.
 
----
+Two problem sets are provided:
 
-## Modelling Assumptions
+- **Q1:** a basic PDDL model with instantaneous actions, used to validate the causal structure of the workflow.
+- **Q2:** a PDDL+ extension introducing continuous degradation, discrete failure events, and a continuous repair process, used to study the effect of time on mission feasibility.
 
-• **the orbital platform is represented as a graph of connected locations:** 'location' é un predicato simmetrico o direzionale. Sono nodi astratti
+## 2. Modelling Choices
 
-• **locomotion between locations is only possible through predefined connections, such as handrails,trusses, or other external structural interfaces:** NO teletrasporto o movimento libero nel grafo (= arco esplicito) --> (connection-type ?from ?to ?type)? 
+### 2.1 Staged component state
 
-• **robots possess one or more manipulators that can be used for locomotion, manipulation, tool handling, inspection, or repair:**  il manipolatore è una risorsa condivisa fra funzioni diverse --> se un'azione richiede un manipolatore libero, deve essere impossibile eseguirla se tutti i manipolatori sono occupati 
+Rather than a single boolean "damaged/not damaged" flag, each component moves through an explicit state (`uninspected → inspected → nominal/degraded → repaired → verified`). This was a deliberate choice to keep inspection, diagnosis, repair, and verification as **separate, causally dependent stages** rather than collapsing them into one action, this was required by the assignment and necessary to avoid trivial encodings.
 
-• **robots may differ in sensing capabilities, locomotion capabilities, payload capacity, computational resources, and available tools:**   predicati/funzioni di capability legati al singolo oggetto robot, non al tipo robot in generale (= differenziare tipi di robot) --> (has-sensor ?robot ?sensor-type), (payload-capacity ?robot) - number, (has-tool ?robot ?tool) 
+### 2.2 Damage-specific repair actions
 
-• **external components may require specific sensing modalities or specialized maintenance tools:** compatibilità a livello di componente, non di azione generica -->(requires-sensor ?component ?sensor-type), (requires-tool ?component ?tool-type) - Le precondizioni delle azioni inspect/diagnose/repair devono controllare questa compatibilità
+Each type of damage has its own repair action with its own required tool and preconditions, rather than a single generic "repair" action:
 
-• **some actions may only be executable after satisfying symbolic preconditions such as inspection, calibration, stabilization, authorization, or tool installation;**  costruire catene di precondizioni causali --> ogni azione "avanzata" ha come precondizione lo stato prodotto dall'azione precedente nella catena. È anche la giustificazione per introdurre, se ti serve, uno stato intermedio tipo stabilized prima di repair
+| Component | Damage | Tool(s) | Repair strategy |
+|---|---|---|---|
+| Antenna bracket | `is-loose` | `torque-wrench` | Tighten the fastening |
+| Antenna bracket | `cracked-bracket` | `grasping-tool` + `spare-bracket` | Physical replacement |
+| Radiator (PDDL only) | `coolant-leak` | `coolant-bypass-tool` + coolant reserve | Isolate and refill |
+| Radiator | `structural-deformation` | `additive-extruder` + `print-material` | Layer-by-layer 3D printing |
+| Radiator (PDDL+ only) | `thermal-bowing` | `thermal-tape` | Mitigate stress before it becomes irreversible |
 
-• **the student is free to introduce additional predicates, actions, functions, or objects whenever they improve the clarity or modularity of the symbolic model:**  predicato ausiliario per evitare un'azione monolitica, aggiungilo pure — ma nella discussione finale motiva perché quella scelta migliora modularità/riusabilità
+Although the Q1 domain defines a dedicated action for the radiator's structural deformation (`structural-deformation-reparation`), this specific damage type is intentionally **not exercised** in the Q1 problem instances. The action was introduced in the Q1 domain as groundwork for the continuous model: structural deformation is the damage type around which the Q2 printing process (`apply_printed_layers`) and its staged causal escalation (`thermal-bowing → structural-deformation → failed`) are built, so its instantaneous PDDL counterpart is defined early but deliberately left for Q2 to demonstrate, where its progressive nature can be simulated more accurately.
 
-### Design symbolic model
-• modular;
-• readable;
-• reusable;
-• easily extensible;
-• physically meaningful.
+Note also that Q1 and Q2 are not fully symmetric in their damage coverage: Q2 deliberately **drops `coolant-leak`** entirely (no corresponding process, event, or action exists in the Q2 domain) and focuses only on the structural deformation path. This trade-off was chosen because structural deformation naturally supports a staged causal escalation (`thermal-bowing → structural-deformation → failed`), which is what Q2 is designed to demonstrate, while a coolant leak is closer to a binary condition and does not lend itself to the same continuous degradation modelling.
 
----
+### 2.3 PDDL+ extension: processes, events, and numeric fluents
 
-## Deliverables:
+The PDDL+ extension introduces three physical mechanisms that cannot be represented with instantaneous discrete actions alone:
 
-### Q1
-• a PDDL domain file;
-• at least two PDDL problem files;
-• valid plans for problem instances;
+- **`:process` continuous degradation** <br>
+  `degrade_antenna_phase` continuously increases the antenna's `phase_error` fluent, proportionally to the local `vibration_level` (itself increased by every robot movement). `increased_thermal_strain` continuously increases the radiator's `thermal_strain` fluent, at a rate given by `strain_rate`. These processes model the physical reality that damage does not appear discretely: it accumulates over time as a consequence of the environment and of the robot's own actions.
 
-### Q2
-• a PDDL+ domain file;
-• at least two PDDL+ problem files;
+- **`:event` threshold-triggered state transitions** <br>
+  Rather than letting the numeric fluents grow unbounded, discrete `:event` fire automatically once a fluent crosses a physically meaningful threshold, moving the component to the next damage stage without requiring robot intervention: `antenna_becomes_loose` (`phase_error ≥ 0.1`) → `antenna-becomes-cracked` (`≥ 0.2`) → `antenna_failed` (`≥ 0.3`); and for the radiator, `paint_causes_overheating` (accelerates `strain_rate` once `thermal_strain ≥ 5.0`) → `radiator_starts_bowing` (`≥ 10.0`) → `radiator_structural_failure` (`≥ 20.0`) → `radiator_failed` (`≥ 30.0`). This piecewise-linear thresholding was chosen deliberately as a **hybrid abstraction**: it captures the qualitative escalation of physical damage without requiring the planner to reason over continuous differential equations, which would be intractable for a numeric PDDL+ solver.
 
-### Discussion
-• a short technical discussion explaining modelling choices, limitations, and differences between the PDDL and PDDL+ models.
+- **`:process` repair over time** <br>
+  The structural deformation repair is not instantaneous: once `start-structural-deformation-reparation` is triggered, the `apply_printed_layers` process deposits material (`layers_printed`) over time until it reaches `layers_to_print`, at which point the `structural_repair_complete` event fires and restores the radiator's thermal fluents to nominal values. This reflects that some physical repairs genuinely take time to execute and cannot be modelled as a single atomic action.
 
-### Avoid
-Avoid trivial encodings, such as directly encoding goal satisfaction inside actions or
-hardcoding a fixed plan inside the domain structure.
+### 2.4 Initial-state simplifications in Q2
 
-### Challenge
-extend solution by introducing one or more abstractions inspired by autonomous free-climbing robots operating in microgravity.
---> identify suitable symbolic or hybrid abstractions that capture important physical constraints while remaining compatible with PDDL or PDDL+.
- SEE PAGE 3 - 5.
+To keep the search space tractable for the numeric planner (ENHSP) and avoid combinatorial explosion, the solvable Q2 instance does **not** start from a fully nominal state and let degradation run its full course. Instead:
 
----
----
+- Damage is already partially underway at `t = 0` (`phase_error = 0.15`, `thermal_strain = 25.0`).
+- The robot starts with all 5 slots pre-equipped with the exact tools required for the mission, instead of having to plan its own trips to and from storage as in Q1.
 
-# SCENARIO V3: Structural Maintenance and Repair Verification
-- External components of the orbital platform may degrade over time or become mechanically loose.
-Examples:
-	* thermal blanket fasteners, 
-	* antenna brackets, 
-	* inspection panel locks, 
-	* radiator supports,
-	* modular payload connectors.
+This is an explicit trade-off: it demonstrates the temporal and physical logic of the continuous model without asking the planner to also solve the full logistics problem from scratch under continuous time, a combination that pushed the solver beyond practical limits during development.
 
-- A free-climbing robot must 
-	* inspect selected components, 
-	* identify which components require maintenance, 
-	* perform the appropriate repair action, 
-	* verify that the repair was successful (complete IF verification has been performed)
+## 3. Plan Walkthrough
 
-- Some repairs require specific tools
-- Some components cannot be repaired until they have first been inspected and classified.
+### Q1 — Instance 1 (`Q1_problem1.pddl`, simple)
 
-- Causal structure: inspection, diagnosis, repair, and verification must be
-represented as distinct stages of a maintenance workflow
+A single antenna bracket starts in the `is-loose` state. The generated plan (15 steps) has the robot shuttle between the storage and the antenna site rather than pre-loading every tool: it retrieves the camera, inspects, diagnoses, returns the camera to storage, retrieves the torque wrench, repairs, and finally retrieves the camera again for verification. **Behaves as expected**: the causal chain inspect → diagnose → repair → verify is respected, and the plan is optimal with respect to the number of trips given only 3 free slots.
+```
+;;!domain: Q1
+;;!problem: Q1-problem1
 
-## Domain Characteristics
-• Robot: single free-climbing maintenance robot.
-• Environment: external platform with multiple maintainable components.
-• Tasks: inspection, diagnosis, repair, verification.
-• Resources: tools, battery, possibly spare parts.
-• Constraints: repair actions depend on diagnosis and tool availability.
+0.00000: (MOVE R DOCKING-PORT ESP-STORAGE)
+0.00100: (UNSTORE-EQUIPMENT R ESP-STORAGE CAM1)
+0.00200: (MOVE R ESP-STORAGE ANTENNA-SITE)
+0.00300: (INSPECT-COMPONENT R ANTENNA1 ANTENNA-SITE CAM1)
+0.00400: (DEGRADED-DIAGNOSIS ANTENNA1 IS-LOOSE CAM1)
+0.00500: (MOVE R ANTENNA-SITE ESP-STORAGE)
+0.00600: (STORE-EQUIPMENT R ESP-STORAGE CAM1)
+0.00700: (UNSTORE-EQUIPMENT R ESP-STORAGE TWRENCH1)
+0.00800: (MOVE R ESP-STORAGE ANTENNA-SITE)
+0.00900: (LOOSE-ANTENNA-REPARATION R ANTENNA-SITE ANTENNA1 TWRENCH1)
+0.01000: (PUT-IN-SLOT R TWRENCH1 SLOT3)
+0.01100: (MOVE R ANTENNA-SITE ESP-STORAGE)
+0.01200: (UNSTORE-EQUIPMENT R ESP-STORAGE CAM1)
+0.01300: (MOVE R ESP-STORAGE ANTENNA-SITE)
+0.01400: (REPAIRED-VERIFY R ANTENNA1 ANTENNA-SITE CAM1)
 
-## Modelling Guidelines
-• Clearly separate inspection, diagnosis, repair, and verification.
-• Avoid modelling repair as a single unconditional action.
-• Represent component states explicitly, such as controlled, nominal, degraded, repaired, verified, or failed.
-• Ensure that verification is required before the goal can be satisfied.
-• Include at least one maintenance task where the robot must choose between inspecting more components and repairing an already diagnosed component.
+; Makespan: 0.014000000000000005
+; Metric: 0.014000000000000005
+```
 
----
+### Q1 — Instance 2 (`Q1_problem2.pddl`, complex, limited resources)
 
-## Q1 – Basic PDDL Model
-• define types for components, tools, locations, and maintenance states;
-• model inspection and diagnosis actions;
-• model at least two different repair actions requiring different tools or preconditions;
-• model verification explicitly;
-• provide at least two problem instances:
-	– one simple instance with a single degraded component;
-	– one non-trivial instance with multiple components, different repair requirements, and limited resources.
-• provide valid plans and justify your workflow representation.
+Two components are damaged simultaneously — the antenna (`cracked-bracket`) and the radiator (`coolant-leak`) — with only 3 physical slots available for 6 required tools/parts. The plan (34 steps) does not solve one component fully before starting the other: it interleaves diagnosis and repair across both components, keeping the camera stowed in a slot between uses instead of returning it to storage each time. **Behaves as expected**: it demonstrates the planner's ability to optimize logistics under resource constraints, not just satisfy the causal workflow.
+```
+;;!domain: Q1
+;;!problem: Q1-Testingproblem
 
-## Q2 – PDDL+ Model
-• introduce a process modelling progressive component degradation;
-• introduce an event representing component failure once degradation exceeds a threshold;
-• optionally introduce a process modelling repair progress over time;
-• provide problem instances where delaying repair changes the feasibility of the mission;
-• explain how continuous degradation affects inspection and repair ordering.
+0.00000: (MOVE R DOCKING-PORT ESP-STORAGE)
+0.00100: (UNSTORE-EQUIPMENT R ESP-STORAGE CAM1)
+0.00200: (MOVE R ESP-STORAGE ANTENNA-SITE)
+0.00300: (INSPECT-COMPONENT R ANTENNA1 ANTENNA-SITE CAM1)
+0.00400: (DEGRADED-DIAGNOSIS ANTENNA1 CRACKED-BRACKET CAM1)
+0.00500: (MOVE R ANTENNA-SITE ESP-STORAGE)
+0.00600: (PUT-IN-SLOT R CAM1 SLOT1)
+0.00700: (UNSTORE-EQUIPMENT R ESP-STORAGE PROFILOMETER1)
+0.00800: (MOVE R ESP-STORAGE RADIATOR-SITE)
+0.00900: (INSPECT-COMPONENT R RADIATOR1 RADIATOR-SITE PROFILOMETER1)
+0.01000: (DEGRADED-DIAGNOSIS RADIATOR1 COOLANT-LEAK PROFILOMETER1)
+0.01100: (MOVE R RADIATOR-SITE ESP-STORAGE)
+0.01200: (STORE-EQUIPMENT R ESP-STORAGE PROFILOMETER1)
+0.01300: (UNSTORE-EQUIPMENT R ESP-STORAGE CRESERVER1)
+0.01400: (PUT-IN-SLOT R CRESERVER1 SLOT3)
+0.01500: (UNSTORE-EQUIPMENT R ESP-STORAGE CBYPASS1)
+0.01600: (MOVE R ESP-STORAGE RADIATOR-SITE)
+0.01700: (COOLANT-RADIATOR-REPARATION R RADIATOR-SITE RADIATOR1 CBYPASS1 CRESERVER1 SLOT3)
+0.01800: (MOVE R RADIATOR-SITE ESP-STORAGE)
+0.01900: (STORE-EQUIPMENT R ESP-STORAGE CBYPASS1)
+0.02000: (UNSTORE-EQUIPMENT R ESP-STORAGE PROFILOMETER1)
+0.02100: (MOVE R ESP-STORAGE RADIATOR-SITE)
+0.02200: (REPAIRED-VERIFY R RADIATOR1 RADIATOR-SITE PROFILOMETER1)
+0.02300: (MOVE R RADIATOR-SITE ESP-STORAGE)
+0.02400: (STORE-EQUIPMENT R ESP-STORAGE PROFILOMETER1)
+0.02500: (UNSTORE-EQUIPMENT R ESP-STORAGE SPARE-BRACKET1)
+0.02600: (PUT-IN-SLOT R SPARE-BRACKET1 SLOT2)
+0.02700: (UNSTORE-EQUIPMENT R ESP-STORAGE GRASPER1)
+0.02800: (MOVE R ESP-STORAGE ANTENNA-SITE)
+0.02900: (CRACKED-BRACKET-REPARATION R ANTENNA-SITE ANTENNA1 GRASPER1 SPARE-BRACKET1 SLOT2 ANTENNA1-DEBRIS)
+0.03000: (MOVE R ANTENNA-SITE ESP-STORAGE)
+0.03100: (STORE-EQUIPMENT R ESP-STORAGE GRASPER1)
+0.03200: (MOVE R ESP-STORAGE ANTENNA-SITE)
+0.03300: (TAKE-FROM-SLOT R SLOT1 CAM1)
+0.03400: (REPAIRED-VERIFY R ANTENNA1 ANTENNA-SITE CAM1)
 
-## Discussion
-• how causal dependencies structure maintenance planning;
-• how symbolic diagnosis differs from physical diagnosis;
-• how PDDL+ changes the interpretation of deferred repair;
-• how this model could support future autonomous maintenance benchmarks
+; Makespan: 0.03400000000000002
+; Metric: 0.03400000000000002
+```
+
+### Q2 — Solvable instance (`Q2_problem.pddl`)
+
+The antenna is repaired first (all actions at `t = 0`, then a 1-time-unit wait before verification). The robot then moves to the radiator, diagnoses the structural deformation, and starts the printing process, which runs continuously from `t = 1.0` to `t = 6.0` before the radiator can be verified. **Behaves as expected**: the plan correctly waits for the continuous printing process to reach its required threshold before attempting verification, showing that the model correctly synchronizes discrete robot actions with continuous physical processes.
+```
+;;!domain: Q2
+;;!problem: Q2-Problem
+
+0: (move R docking-port esp-storage)
+0: (move R esp-storage antenna-site)
+0: (take-from-slot R slot1 cam1)
+0: (inspect-component R antenna1 antenna-site cam1)
+0: (put-in-slot R cam1 slot1)
+0: (degraded-diagnosis antenna1 is-loose cam1)
+0: (take-from-slot R slot2 twrench1)
+0: (loose-antenna-reparation R antenna-site antenna1 twrench1)
+0: (put-in-slot R twrench1 slot2)
+0: -----waiting---- [1.0]
+1.0: (take-from-slot R slot1 cam1)
+1.0: (repaired-verify R antenna1 antenna-site cam1)
+1.0: (put-in-slot R cam1 slot1)
+1.0: (move R antenna-site radiator-site)
+1.0: (take-from-slot R slot3 profilometer1)
+1.0: (inspect-component R radiator1 radiator-site profilometer1)
+1.0: (degraded-diagnosis radiator1 structural-deformation profilometer1)
+1.0: (put-in-slot R profilometer1 slot3)
+1.0: (take-from-slot R slot5 aextruder1)
+1.0: (start-structural-deformation-reparation R radiator-site radiator1 aextruder1 printmat1 slot4)
+1.0: -----waiting---- [6.0]
+6.0: (put-in-slot R aextruder1 slot5)
+6.0: (take-from-slot R slot3 profilometer1)
+6.0: (repaired-verify R radiator1 radiator-site profilometer1)
+
+; Makespan: 1
+; Metric: 1
+```
+
+### Q2 — Infeasible instance (`Q2_problemInfeasible.pddl`)
+
+The radiator starts already close to failure (`thermal_strain = 29.0`, `strain_rate = 2.0`), leaving a mathematical margin of only 0.5 time units before the `radiator_failed` event fires (compared to 20.0 time units in the solvable instance, where `strain_rate = 0.25`). The planner returns **no plan** (59 states evaluated, empty plan). **Behaves as expected**: this is not a solver failure but the intended outcome — it demonstrates that, under continuous dynamics, delaying an intervention past a physically determined deadline makes the mission genuinely infeasible, which is impossible to express in the timeless Q1 model.
+```
+;;!domain: Q2
+;;!problem: Q2-Infeasible
+
+; Makespan: 0
+; Metric: 0
+; States evaluated: 59
+```
+
+## 4. Limitations and Known Issues
+
+- **Closed-world assumption and determinism.** The model assumes 100% success on every action and no sensor noise, unlike real diagnostic hardware.
+- **No geometric or kinematic representation.** Locations are discrete topological nodes; movement is instantaneous in both Q1 and Q2. Grasping, tool exchange, and material deposition are represented as symbolic slot operations, not physical manipulation.
+- **Boolean, non-negotiable goals.** The planner cannot perform partial mission success or triage between components (e.g., sacrifice the antenna to save the radiator), the goal is either fully satisfied or the plan fails outright.
+- **No explicit prioritization heuristic.** In Q2, the domain does not encode any cost function based on a component's degradation rate. The correct order of intervention, when one exists, emerges implicitly from the search process rather than being guided by an explicit heuristic, this is an acknowledged limitation and a direction for future extension.
+- **Partial pre-assignment of damage in Q2 instances.** While the domain architecturally supports deriving damage purely from continuous evolution, the provided Q2 problem instances still pre-assign a partially degraded initial state for computational tractability.
+- **Combinatorial explosion.** Introducing continuous numeric fluents together with unconstrained slot/inventory management pushes the ENHSP solver to its practical limits; this is why the Q2 instances constrain the initial logistics rather than leaving them fully open as in Q1.
+
+## 5. Repository structure
+
+```
+PDDL/
+  Q1/
+    Q1_domain.pddl
+    Q1_problem1.pddl        # simple instance
+    Q1_problem2.pddl        # complex, limited-resource instance
+	Q1_testingProblem.pddl  # used for testing an isolate component
+  Q2/
+    Q2_domain.pddl
+    Q2_problem.pddl             		# solvable instance
+    Q2_problemInfeasible.pddl    		# demonstrates mission infeasibility due to delay
+	Q2_testingProblem.pddl      		# used for testing an isolate component
+	Q2_testingProblemExtended.pddl	  	# used for testing an isolate component
+
+Plans/
+  Q1/
+    Q1_problem1.plan	# solvable instance plan for problem1
+    Q1_problem2.plan	# solvable instance plan for problem2
+  Q2/
+    Q2_antennaLoose_radiatorDeformed.plan   # solvable instance plan
+    Q2_infeasibleMission.plan               # empty plan / infeasibility proof
+
+Documents/
+	Report/			# full technical report: design justification, plan analysis, and discussion
+	Presentation/	# presentation (.pdf and .pptx format)
+```
+
+## 6. Running the planner
+
+Q1 and Q2 were solved using different planning back-ends, both configured through the [PDDL VS Code extension](https://marketplace.visualstudio.com/items?itemName=jan-dolejsi.pddl) (Jan Dolejší).
+
+- **Q1** was solved using the extension's built-in **Planning as a Service**, with **BFWS** (Best-First Width Search) selected as the planner. This is a cloud-hosted service requiring no local installation. To reproduce it, open a Q1 problem file in VS Code with the PDDL extension installed and run the *"PDDL: Run the planner and display the plan"* command with BFWS selected as the planning service.
+
+- **Q2** requires **ENHSP-20** (`enhsp-20.jar`, included in `PDDL/Q2/`) running locally, since it needs to support numeric fluents, processes, and events. Two solver configurations were used depending on the specific instance:
+
+  | Configuration | Search strategy | Heuristic | Used for |
+  |---|---|---|---|
+  | `ENHSP-20 (per Q2)` | `WAStar` | `hrmax` | `Q2_problemInfeasible.pddl`, `Q2_testingProblem.pddl` |
+  | `ENHSP-20 (per Q2-Extended)` | `gbfs` | `hadd` | `Q2_problem.pddl`, `Q2_testingProblemExtended.pddl` |
+
+  Equivalent command-line invocations:
+
+```bash
+  # Q2_problemInfeasible.pddl, Q2_testingProblem.pddl
+  java -jar PDDL/Q2/enhsp-20.jar -o PDDL/Q2/Q2_domain.pddl -f PDDL/Q2/Q2_problemInfeasible.pddl -s WAStar -h hrmax
+
+  # Q2_problem.pddl, Q2_testingProblemExtended.pddl
+  java -jar PDDL/Q2/enhsp-20.jar -o PDDL/Q2/Q2_domain.pddl -f PDDL/Q2/Q2_problem.pddl -s gbfs -h hadd
+```
+
+  For the infeasible instance (`Q2_problemInfeasible.pddl`), the expected output is an empty plan together with a report of the number of states evaluated before the search space was exhausted — this is the correct, intended behaviour, not an error.
