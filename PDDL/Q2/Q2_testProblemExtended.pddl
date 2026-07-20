@@ -1,3 +1,6 @@
+;; Testing problem
+;;      Problem for studying the continuous repair process related to the structural deformation of the radiator
+
 (define (problem Q2-TestingExtendedProblem)
   (:domain Q2)
 

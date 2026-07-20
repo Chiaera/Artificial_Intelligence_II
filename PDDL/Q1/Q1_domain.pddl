@@ -1,3 +1,7 @@
+;; Domain Q1
+;;      Time is not considered and actions produce instant effects (inspect -> diagnose -> repair -> verify).
+;;      Implemented componed are antenna-bracket (is_loose / cracked-bracket) and radiator (coolant-leak / structural-deformation)
+
 (define (domain Q1)
   (:requirements :strips :typing :negative-preconditions)
   (:types robot location slot component status equipment damage - object

@@ -1,3 +1,10 @@
+;; Q2-Problem: solvable instance with continuous degradation already in progress.
+;;      The antenna starts with an accumulated phase_error (0.15), already in the is-loose state.
+;;      The radiator starts with a high thermal_strain (25.0) but a low strain_rate (0.25),
+;;      leaving a wide time margin before reaching the failure threshold (30.0).
+
+;;      The robot starts with all 5 slots pre-equipped with the required tools.
+
 (define (problem Q2-Problem)
   (:domain Q2)
   (:objects

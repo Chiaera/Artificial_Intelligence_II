@@ -1,3 +1,6 @@
+;; Testing problem
+;;      Problem used to test all possible scenarios on each component
+
 (define (problem Q1-Testingproblem)
   (:domain Q1)
 

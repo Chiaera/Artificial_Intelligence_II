@@ -1,6 +1,7 @@
-;; Domain Q1
-;;      Time is not considered and actions produce instant effects.
-;;      Implemented componed: antenna-bracket (is_loose / cracked-bracket) and radiator (coolant-leak / structural-deformation)
+;; Domain Q2
+;;      Continuous-time extension of Q1: time is modeled via :process and :event constructs.
+;;      Implemented components: antenna-bracket (is-loose / cracked-bracket / failed) and
+;;      radiator (thermal-bowing / structural-deformation / failed), with continuous degradation.
 
 (define (domain Q2)
   (:requirements :strips :typing :negative-preconditions :numeric-fluents :durative-actions :continuous-effects :time)

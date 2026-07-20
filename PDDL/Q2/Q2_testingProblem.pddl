@@ -1,3 +1,7 @@
+;; Testing problem
+;;      Problem used to test all possible scenarios on each component, 
+;;      considering the repair action instantaneous as Q1
+
 (define (problem Q2-TestingProblem)
   (:domain Q2)
 

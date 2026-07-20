@@ -1,3 +1,11 @@
+;; Q2-Infeasible: demonstrates mission failure due to delayed intervention.
+;;      The antenna is healthy (phase_error 0.05, far from any threshold).
+;;      The radiator is near critical (thermal_strain 29.0) with a high strain_rate (2.0),
+;;      leaving almost no time margin before reaching the failure threshold (30.0).
+
+;;      The planner cannot find any valid plan: the goal requires both components verified,
+;;      but the radiator fails before the robot can complete inspection and diagnosis.
+
 (define (problem Q2-Infeasible)
   (:domain Q2)
   (:objects
