@@ -2,6 +2,37 @@
 
 This repository contains the PDDL and PDDL+ models developed for assignment **D6-V3: Autonomous Orbital Maintenance Platform — Structural Maintenance and Repair Verification**, together with the corresponding problem instances, generated plans, and the accompanying report.
 
+## Repository structure
+
+```
+PDDL/
+  Q1/
+    Q1_domain.pddl
+    Q1_problem1.pddl        # simple instance
+    Q1_problem2.pddl        # complex, limited-resource instance
+	Q1_testingProblem.pddl  # used for testing an isolate component
+  Q2/
+    Q2_domain.pddl
+    Q2_problem.pddl             		# solvable instance
+    Q2_problemInfeasible.pddl    		# demonstrates mission infeasibility due to delay
+	Q2_testingProblem.pddl      		# used for testing an isolate component
+	Q2_testingProblemExtended.pddl	  	# used for testing an isolate component
+
+Plans/
+  Q1/
+    Q1_problem1.plan	# solvable instance plan for problem1
+    Q1_problem2.plan	# solvable instance plan for problem2
+  Q2/
+    Q2_antennaLoose_radiatorDeformed.plan   # solvable instance plan
+    Q2_infeasibleMission.plan               # empty plan / infeasibility proof
+
+Documents/
+	Report/			# full technical report: design justification, plan analysis, and discussion
+	Presentation/	# presentation (.pdf and .pptx format)
+```
+
+---
+
 ## 1. Domain Description
 
 The domain models a single free-climbing maintenance robot operating on the external structure of an orbital platform. The robot must inspect, diagnose, repair, and verify two external components:
@@ -10,8 +41,16 @@ The domain models a single free-climbing maintenance robot operating on the exte
 - **Radiator** — responsible for thermal control via coolant circulation. Q1 models two independent damage types: a coolant leak (`coolant-leak`) and a structural deformation (`structural-deformation`). Q2 focuses exclusively on the structural deformation path, extending it with an intermediate thermal bowing stage (`thermal-bowing`) to represent a continuous escalation toward failure.
 
 Every maintenance task follows the same causal workflow, which is the core modelling requirement of the assignment:
-```
-unknown / uninspected → inspected → nominal / degraded → repaired → verified
+```mermaid
+stateDiagram-v2
+    [*] --> uninspected
+    uninspected --> inspected
+    inspected --> nominal
+    inspected --> degraded
+    degraded --> repaired
+    nominal --> verified
+    repaired --> verified
+    verified --> [*]
 ```
 
 Repair is never treated as a single unconditional action: the robot must first inspect the component with a compatible sensor, diagnose the specific damage, apply the tool required for that specific damage, and finally verify the repair before the goal can be considered satisfied.
@@ -62,6 +101,7 @@ To keep the search space tractable for the numeric planner (ENHSP) and avoid com
 
 - Damage is already partially underway at `t = 0` (`phase_error = 0.15`, `thermal_strain = 25.0`).
 - The robot starts with all 5 slots pre-equipped with the exact tools required for the mission, instead of having to plan its own trips to and from storage as in Q1.
+- **Unidirectional connectivity.** Unlike Q1, where locations are connected bidirectionally to let the robot travel back to storage for tool exchange, the Q2 instances declare `connected` in one direction only (`docking-port → esp-storage → antenna-site → radiator-site`). This is possible precisely because the robot no longer needs to backtrack to storage, having all required tools pre-loaded in its slots from the start.
 
 This is an explicit trade-off: it demonstrates the temporal and physical logic of the continuous model without asking the planner to also solve the full logistics problem from scratch under continuous time, a combination that pushed the solver beyond practical limits during development.
 
@@ -176,6 +216,13 @@ The antenna is repaired first (all actions at `t = 0`, then a 1-time-unit wait b
 ; Makespan: 1
 ; Metric: 1
 ```
+```mermaid
+flowchart LR
+    A["Fix antenna<br/>t = 0"] --> B["Waiting<br/>→ t = 1.0"]
+    B --> C["Diagnose radiator<br/>t = 1.0"]
+    C --> D["Printing process<br/>→ t = 6.0"]
+    D --> E["Verify<br/>t = 6.0"]
+```
 
 ### Q2 — Infeasible instance (`Q2_problemInfeasible.pddl`)
 
@@ -188,44 +235,38 @@ The radiator starts already close to failure (`thermal_strain = 29.0`, `strain_r
 ; Metric: 0
 ; States evaluated: 59
 ```
+## 4. Discussion
 
-## 4. Limitations and Known Issues
+Comparing the symbolic (Q1) and continuous (Q2) formulations highlights four points that are central to this assignment.
 
-- **Closed-world assumption and determinism.** The model assumes 100% success on every action and no sensor noise, unlike real diagnostic hardware.
-- **No geometric or kinematic representation.** Locations are discrete topological nodes; movement is instantaneous in both Q1 and Q2. Grasping, tool exchange, and material deposition are represented as symbolic slot operations, not physical manipulation.
-- **Boolean, non-negotiable goals.** The planner cannot perform partial mission success or triage between components (e.g., sacrifice the antenna to save the radiator), the goal is either fully satisfied or the plan fails outright.
-- **No explicit prioritization heuristic.** In Q2, the domain does not encode any cost function based on a component's degradation rate. The correct order of intervention, when one exists, emerges implicitly from the search process rather than being guided by an explicit heuristic, this is an acknowledged limitation and a direction for future extension.
-- **Partial pre-assignment of damage in Q2 instances.** While the domain architecturally supports deriving damage purely from continuous evolution, the provided Q2 problem instances still pre-assign a partially degraded initial state for computational tractability.
-- **Combinatorial explosion.** Introducing continuous numeric fluents together with unconstrained slot/inventory management pushes the ENHSP solver to its practical limits; this is why the Q2 instances constrain the initial logistics rather than leaving them fully open as in Q1.
+- **How causal dependencies structure maintenance planning?** <br>
+	In Q1, the workflow (inspect → diagnose → repair → verify) is enforced purely through logical preconditions: no action can be executed out of order, regardless of which component or damage is involved. In Q2, this causality extends beyond logic into physics: degradation itself becomes an active causal agent, e.g. the robot's own movement increases `vibration_level`, which in turn drives the antenna's `phase_error` upward, while unmitigated thermal stress on the radiator accelerates its own `strain_rate` through the `paint_causes_overheating` event.
 
-## 5. Repository structure
+- **How symbolic diagnosis differs from physical diagnosis?** <br>
+	A limitation of standard PDDL is that the planner is effectively omniscient: the damage is already declared true in the initial state, and inspection only exists to satisfy the causal chain, not to reveal genuinely unknown information. Q2 mitigates this at the architectural level: damage can, in principle, emerge purely from the evolution of numeric fluents rather than being pre-declared. In practice, however, the provided problem instances were still forced to reintroduce a partially pre-assigned damage state at t = 0 (Section 2.4), since letting both components evolve from a fully nominal state proved computationally intractable for the ENHSP parser within reasonable planning time. The architectural capability is therefore demonstrated in principle by the domain, but not fully exercised by the specific instances solved here.
 
-```
-PDDL/
-  Q1/
-    Q1_domain.pddl
-    Q1_problem1.pddl        # simple instance
-    Q1_problem2.pddl        # complex, limited-resource instance
-	Q1_testingProblem.pddl  # used for testing an isolate component
-  Q2/
-    Q2_domain.pddl
-    Q2_problem.pddl             		# solvable instance
-    Q2_problemInfeasible.pddl    		# demonstrates mission infeasibility due to delay
-	Q2_testingProblem.pddl      		# used for testing an isolate component
-	Q2_testingProblemExtended.pddl	  	# used for testing an isolate component
+- **How PDDL+ changes the interpretation of deferred repair?** <br>
+	In Q1, delaying a repair has no consequence: a damaged component simply waits, unchanged, until the robot attends to it. In Q2, a delay has a real physical cost. `Q2_problemInfeasible.pddl` demonstrates this directly: with `strain_rate = 2.0` and `thermal_strain` already at 29.0, the robot has only 0.5 time units of margin before the `radiator_failed` event fires, there is not enough time to even begin the inspection sequence, so no plan exists at all.
 
-Plans/
-  Q1/
-    Q1_problem1.plan	# solvable instance plan for problem1
-    Q1_problem2.plan	# solvable instance plan for problem2
-  Q2/
-    Q2_antennaLoose_radiatorDeformed.plan   # solvable instance plan
-    Q2_infeasibleMission.plan               # empty plan / infeasibility proof
+- **How this model could support future maintenance benchmarks?** <br>
+	The gap between offline planning and real robotic execution is visible in the model itself: `layers_to_print` is computed deterministically in Q2, whereas a real robot would rely on closed-loop sensor feedback to know when a repair is physically complete. Similarly, the combinatorial explosion encountered when combining continuous fluents with free slot/inventory management points to the need for better search heuristics before this kind of model could scale to more components or more realistic logistics.
 
-Documents/
-	Report/			# full technical report: design justification, plan analysis, and discussion
-	Presentation/	# presentation (.pdf and .pptx format)
-```
+## 5. Limitations and Known Issues
+
+- **Closed-world assumption and determinism** <br>
+	The model assumes 100% success on every action and no sensor noise, unlike real diagnostic hardware.
+- **No geometric or kinematic representation** <br>
+	Locations are discrete topological nodes; movement is instantaneous in both Q1 and Q2. Grasping, tool exchange, and material deposition are represented as symbolic slot operations, not physical manipulation.
+- **Boolean, non-negotiable goals** <br>
+	The planner cannot perform partial mission success or triage between components (e.g., sacrifice the antenna to save the radiator), the goal is either fully satisfied or the plan fails outright.
+- **No explicit prioritization heuristic, and "risk" itself is ambiguous** <br>
+	The domain does not encode any cost function based on a component's degradation rate, so the order of intervention emerges implicitly from the search process rather than from an explicit heuristic. This matters because "more at risk" is not a well-defined notion without further specification: in `Q2_problem.pddl`, the radiator has a higher absolute damage value (`thermal_strain = 25.0`) but a wide time-to-failure margin (20 time units, given `strain_rate = 0.25`), while the antenna has a lower absolute value (`phase_error = 0.15`) but a much narrower margin (≈ 3 time units, driven by the local `vibration_level = 0.05`). A heuristic based on absolute damage severity and one based on time-to-failure would therefore prioritize the two components in opposite order; an ambiguity the current model leaves entirely to the underlying search strategy rather than resolving explicitly.
+- **Partial pre-assignment of damage in Q2 instances** <br>
+	While the domain architecturally supports deriving damage purely from continuous evolution, the provided Q2 problem instances still pre-assign a partially degraded initial state for computational tractability.
+- **Combinatorial explosion** <br>
+	Introducing continuous numeric fluents together with unconstrained slot/inventory management pushes the ENHSP solver to its practical limits; this is why the Q2 instances constrain the initial logistics rather than leaving them fully open as in Q1.
+
+---
 
 ## 6. Running the planner
 
