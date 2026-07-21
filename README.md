@@ -27,7 +27,7 @@ Plans/
     Q2_infeasibleMission.plan               # empty plan / infeasibility proof
 
 Documents/
-	Report/			# full technical report: design justification, plan analysis, and discussion
+	report			# full technical report: design justification, plan analysis, and discussion
 	Presentation/	# presentation (.pdf and .pptx format)
 ```
 
