@@ -37,8 +37,8 @@ Documents/
 
 The domain models a single free-climbing maintenance robot operating on the external structure of an orbital platform. The robot must inspect, diagnose, repair, and verify two external components:
 
-- **Antenna bracket** — the structural support fixing the communication antenna to the platform. Two damage types are modelled: loosening (`is-loose`) and structural cracking (`cracked-bracket`). In the basic PDDL model (Q1) these are treated as independent, separately diagnosable conditions, each with its own dedicated repair action. In the PDDL+ model (Q2) they instead become causally connected stages of the same continuous degradation process, escalating toward a `failed` state if left unaddressed.
-- **Radiator** — responsible for thermal control via coolant circulation. Q1 models two independent damage types: a coolant leak (`coolant-leak`) and a structural deformation (`structural-deformation`). Q2 focuses exclusively on the structural deformation path, extending it with an intermediate thermal bowing stage (`thermal-bowing`) to represent a continuous escalation toward failure.
+- **Antenna bracket:** the structural support fixing the communication antenna to the platform. Two damage types are modelled: loosening (`is-loose`) and structural cracking (`cracked-bracket`). In the basic PDDL model (Q1) these are treated as independent, separately diagnosable conditions, each with its own dedicated repair action. In the PDDL+ model (Q2) they instead become causally connected stages of the same continuous degradation process, escalating toward a `failed` state if left unaddressed.
+- **Radiator:** — responsible for thermal control via coolant circulation. Q1 models two independent damage types: a coolant leak (`coolant-leak`) and a structural deformation (`structural-deformation`). Q2 focuses exclusively on the structural deformation path, extending it with an intermediate thermal bowing stage (`thermal-bowing`) to represent a continuous escalation toward failure.
 
 Every maintenance task follows the same causal workflow, which is the core modelling requirement of the assignment:
 ```mermaid
