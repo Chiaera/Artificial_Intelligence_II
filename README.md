@@ -281,14 +281,4 @@ Q1 and Q2 were solved using different planning back-ends, both configured throug
   | `ENHSP-20 (per Q2)` | `WAStar` | `hrmax` | `Q2_problemInfeasible.pddl`, `Q2_testingProblem.pddl` |
   | `ENHSP-20 (per Q2-Extended)` | `gbfs` | `hadd` | `Q2_problem.pddl`, `Q2_testingProblemExtended.pddl` |
 
-  Equivalent command-line invocations:
-
-```bash
-  # Q2_problemInfeasible.pddl, Q2_testingProblem.pddl
-  java -jar PDDL/Q2/enhsp-20.jar -o PDDL/Q2/Q2_domain.pddl -f PDDL/Q2/Q2_problemInfeasible.pddl -s WAStar -h hrmax
-
-  # Q2_problem.pddl, Q2_testingProblemExtended.pddl
-  java -jar PDDL/Q2/enhsp-20.jar -o PDDL/Q2/Q2_domain.pddl -f PDDL/Q2/Q2_problem.pddl -s gbfs -h hadd
-```
-
   For the infeasible instance (`Q2_problemInfeasible.pddl`), the expected output is an empty plan together with a report of the number of states evaluated before the search space was exhausted — this is the correct, intended behaviour, not an error.
