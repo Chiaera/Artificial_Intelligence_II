@@ -282,3 +282,7 @@ Q1 and Q2 were solved using different planning back-ends, both configured throug
   | `ENHSP-20 (per Q2-Extended)` | `gbfs` | `hadd` | `Q2_problem.pddl`, `Q2_testingProblemExtended.pddl` |
 
   For the infeasible instance (`Q2_problemInfeasible.pddl`), the expected output is an empty plan together with a report of the number of states evaluated before the search space was exhausted. This is the correct, intended behaviour, not an error.
+
+## Observation
+The submitted codes and report have been thoroughly reviewed by the teaching assistant, Omar Kashmar.
+
